@@ -1,32 +1,33 @@
 package exception;
 
 /**
- * Exception khusus yang dilempar ketika penyewa mencoba menyewa barang
- * yang sedang disewa oleh penyewa lain atau tidak tersedia.
+ * Exception khusus yang dilempar ketika input dari pengguna tidak valid.
+ * Contohnya lama sewa kurang dari satu hari, jumlah pembayaran nol atau
+ * negatif, serta pilihan menu yang tidak sesuai.
  * <p>
  * Kelas ini merupakan checked exception sehingga pemanggilnya wajib
  * menangani dengan try-catch atau mendeklarasikan {@code throws}.
  */
-public class BarangTidakTersediaException extends Exception {
+public class InputTidakValidException extends Exception {
 
     private static final long serialVersionUID = 1L;
 
     /**
      * Membuat exception dengan pesan kesalahan.
      *
-     * @param message Pesan yang menjelaskan barang mana yang tidak tersedia
+     * @param message Pesan yang menjelaskan input apa yang tidak valid
      */
-    public BarangTidakTersediaException(String message) {
+    public InputTidakValidException(String message) {
         super(message);
     }
 
     /**
      * Membuat exception dengan pesan kesalahan dan penyebab aslinya.
      *
-     * @param message Pesan yang menjelaskan barang mana yang tidak tersedia
-     * @param cause   Exception lain yang menjadi penyebab
+     * @param message Pesan yang menjelaskan input apa yang tidak valid
+     * @param cause   Exception lain yang menjadi penyebab, misalnya NumberFormatException
      */
-    public BarangTidakTersediaException(String message, Throwable cause) {
+    public InputTidakValidException(String message, Throwable cause) {
         super(message, cause);
     }
 }
