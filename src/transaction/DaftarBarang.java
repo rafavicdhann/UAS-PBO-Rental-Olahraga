@@ -8,7 +8,6 @@ import model.AlatLatihanRingan;
 import model.AlatRaket;
 import model.Barang;
 
-/** Mengelola daftar peralatan olahraga pada sistem rental. */
 public class DaftarBarang {
 
     private final ArrayList<Barang> daftar = new ArrayList<>();
