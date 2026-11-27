@@ -25,8 +25,8 @@ public class Admin extends Akun {
      * @param daftar Objek DaftarBarang sistem
      * @param barang Objek Barang yang akan ditambahkan
      */
-    public void tambahBarang(DaftarBarang daftar, Barang barang) {
-        daftar.tambahBarang(barang);
+    public void tambahBarang(DaftarBarang daftarBarang, Barang barang) {
+        daftarBarang.tambahBarang(barang);
     }
 
     /**
@@ -35,9 +35,9 @@ public class Admin extends Akun {
      * @param transaksi Objek Transaksi yang akan diterima
      */
     public void terimaTransaksi(Transaksi transaksi) {
-        transaksi.ubahStatus("DITERIMA / SEDANG DISEWA");
-        for (Barang b : transaksi.getBarang()) {
-            b.setTersedia(false);
+        transaksi.ubahStatus(Transaksi.STATUS_AKTIF);
+        for (Barang barang : transaksi.getBarang()) {
+            barang.setTersedia(false);
         }
         System.out.println("Transaksi " + transaksi.getId() + " berhasil disetujui.");
     }
@@ -48,9 +48,9 @@ public class Admin extends Akun {
      * @param transaksi Objek Transaksi yang dikembalikan
      */
     public void konfirmasiKembali(Transaksi transaksi) {
-        transaksi.ubahStatus("SELESAI / DIKEMBALIKAN");
-        for (Barang b : transaksi.getBarang()) {
-            b.setTersedia(true);
+        transaksi.ubahStatus(Transaksi.STATUS_SELESAI);
+        for (Barang barang : transaksi.getBarang()) {
+            barang.setTersedia(true);
         }
         System.out.println("Pengembalian untuk transaksi " + transaksi.getId() + " telah dikonfirmasi.");
     }

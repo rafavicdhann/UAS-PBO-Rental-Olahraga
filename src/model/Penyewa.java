@@ -30,8 +30,8 @@ public class Penyewa extends Akun {
      *
      * @param daftar Objek DaftarBarang sistem
      */
-    public void lihatBarang(DaftarBarang daftar) {
-        daftar.tampilkanSemuaBarang();
+    public void lihatBarang(DaftarBarang daftarBarang) {
+        daftarBarang.tampilkanSemuaBarang();
     }
 
     /**

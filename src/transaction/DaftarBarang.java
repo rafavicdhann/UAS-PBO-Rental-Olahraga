@@ -67,6 +67,9 @@ public class DaftarBarang {
         if (barang == null) {
             throw new BarangTidakTersediaException("Barang dengan kode '" + id + "' tidak ditemukan.");
         }
+        if (!barang.isTersedia()) {
+            throw new BarangTidakTersediaException("Barang '" + barang.getNama() + "' sedang disewa dan tidak dapat dihapus.");
+        }
         daftar.remove(barang);
     }
 
