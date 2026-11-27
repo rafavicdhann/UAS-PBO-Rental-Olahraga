@@ -396,4 +396,100 @@ public class Main {
         }
     }
 
-   
+    private void lihatInvoice(JTable tabel, ArrayList<Transaksi> sumber) {
+        int r = tabel.getSelectedRow();
+        if (r < 0 || r >= sumber.size()) {
+            tampilError("Pilih transaksi terlebih dahulu.");
+            return;
+        }
+        tampilDialogInvoice(sumber.get(r));
+    }
+
+    private void tampilDialogInvoice(Transaksi trx) {
+        JTextArea area = new JTextArea(Invoice.formatInvoice(trx));
+        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        area.setEditable(false);
+        JScrollPane scroll = new JScrollPane(area);
+        scroll.setPreferredSize(new Dimension(480, 290));
+        JOptionPane.showMessageDialog(frame, scroll, "Invoice " + trx.getId(), JOptionPane.PLAIN_MESSAGE);
+    }
+
+    private boolean tampilForm(String judul, String[] labels, Component... inputs) {
+        JPanel p = new JPanel(new GridLayout(labels.length, 2, 8, 8));
+        for (int i = 0; i < labels.length; i++) {
+            p.add(new JLabel(labels[i]));
+            p.add(inputs[i]);
+        }
+        return JOptionPane.showConfirmDialog(frame, p, judul, JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE) == JOptionPane.OK_OPTION;
+    }
+
+    private String kodeTerpilih(JTable tabel) throws InputTidakValidException {
+        if (tabel.getSelectedRow() < 0) {
+            throw new InputTidakValidException("Pilih barang di tabel terlebih dahulu.");
+        }
+        return String.valueOf(tabel.getValueAt(tabel.getSelectedRow(), 0));
+    }
+
+    private String wajibIsi(String teks, String field) throws InputTidakValidException {
+        String hasil = teks == null ? "" : teks.trim();
+        if (hasil.isEmpty()) {
+            throw new InputTidakValidException(field + " tidak boleh kosong.");
+        }
+        return hasil;
+    }
+
+    private double parseAngka(String teks, double min, String field) throws InputTidakValidException {
+        try {
+            double v = Double.parseDouble(wajibIsi(teks, field));
+            if (Double.isNaN(v) || Double.isInfinite(v) || v < min) {
+                throw new InputTidakValidException(field + " minimal " + (long) min + ".");
+            }
+            return v;
+        } catch (NumberFormatException ex) {
+            throw new InputTidakValidException(field + " harus berupa angka valid.", ex);
+        }
+    }
+
+    private void tampilError(String pesan) {
+        JOptionPane.showMessageDialog(frame, pesan, "Validasi", JOptionPane.ERROR_MESSAGE);
+    }
+
+    private DefaultTableModel buatModel(String... kolom) {
+        return new DefaultTableModel(kolom, 0) {
+            @Override
+            public boolean isCellEditable(int r, int c) {
+                return false;
+            }
+        };
+    }
+
+    private JTable buatTabel(DefaultTableModel model) {
+        JTable tabel = new JTable(model);
+        tabel.setRowHeight(26);
+        tabel.setFillsViewportHeight(true);
+        tabel.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        return tabel;
+    }
+
+    private JPanel buatTab(JTable tabel, Component bawah) {
+        JPanel p = new JPanel(new BorderLayout(0, 8));
+        p.add(new JScrollPane(tabel), BorderLayout.CENTER);
+        p.add(bawah, BorderLayout.SOUTH);
+        return p;
+    }
+
+    private JButton buatTombol(String teks, ActionListener aksi) {
+        JButton b = new JButton(teks);
+        b.addActionListener(aksi);
+        return b;
+    }
+
+    private JPanel buatBaris(int align, Component... komponen) {
+        JPanel p = new JPanel(new FlowLayout(align, 8, 2));
+        for (Component c : komponen) {
+            p.add(c);
+        }
+        return p;
+    }
+} 
+
