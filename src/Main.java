@@ -199,4 +199,201 @@ public class Main {
         }
     }
 
-    
+   private void tambahBarang() {
+        JComboBox<String> comboKat = new JComboBox<>(new String[]{"Latihan Ringan", "Raket (+Senar)", "Kardio (+Asuransi)"});
+        JTextField tfKode = new JTextField(), tfNama = new JTextField(), tfTarif = new JTextField(), tfEkstra = new JTextField("0");
+        tfEkstra.setEnabled(false);
+        comboKat.addActionListener(e -> tfEkstra.setEnabled(comboKat.getSelectedIndex() != 0));
+
+        if (!tampilForm("Tambah Barang", new String[]{"Kategori", "Kode", "Nama Alat", "Tarif/Hari (Rp)", "Biaya Ekstra (Rp)"},
+                comboKat, tfKode, tfNama, tfTarif, tfEkstra)) {
+            return;
+        }
+        try {
+            String kode = wajibIsi(tfKode.getText(), "Kode").toUpperCase();
+            if (daftarBarang.cariBarang(kode) != null) {
+                throw new InputTidakValidException("Kode '" + kode + "' sudah ada.");
+            }
+            String nama = wajibIsi(tfNama.getText(), "Nama alat");
+            double tarif = parseAngka(tfTarif.getText(), 1, "Tarif harian");
+
+            Barang baru;
+            int idx = comboKat.getSelectedIndex();
+            if (idx == 0) {
+                baru = new AlatLatihanRingan(kode, nama, tarif);
+            } else if (idx == 1) {
+                baru = new AlatRaket(kode, nama, tarif, parseAngka(tfEkstra.getText(), 0, "Biaya perawatan senar"));
+            } else {
+                baru = new AlatKardio(kode, nama, tarif, parseAngka(tfEkstra.getText(), 0, "Biaya asuransi harian"));
+            }
+            adminAktif.tambahBarang(daftarBarang, baru);
+            perbaruiTabel();
+        } catch (InputTidakValidException ex) {
+            tampilError(ex.getMessage());
+        }
+    }
+
+    private void hapusBarang() {
+        try {
+            String kode = kodeTerpilih(tabelKatalogAdmin);
+            if (JOptionPane.showConfirmDialog(frame, "Hapus '" + kode + "'?", "Konfirmasi", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                daftarBarang.hapusBarang(kode);
+                perbaruiTabel();
+            }
+        } catch (InputTidakValidException | BarangTidakTersediaException ex) {
+            tampilError(ex.getMessage());
+        }
+    }
+
+    private void tambahKeranjang() {
+        try {
+            Barang barang = daftarBarang.cekTersedia(kodeTerpilih(tabelKatalogPenyewa));
+            int durasi = (Integer) spinnerDurasi.getValue();
+            penyewaAktif.getKeranjang().tambahItem(barang, durasi);
+            perbaruiTabel();
+            JOptionPane.showMessageDialog(frame, barang.getNama() + " (" + durasi + " hari) masuk ke keranjang.");
+        } catch (InputTidakValidException | BarangTidakTersediaException ex) {
+            tampilError(ex.getMessage());
+        }
+    }
+
+    private void hapusKeranjang() {
+        try {
+            penyewaAktif.getKeranjang().hapusItem(tabelKeranjang.getSelectedRow());
+            perbaruiTabel();
+        } catch (InputTidakValidException ex) {
+            tampilError(ex.getMessage());
+        }
+    }
+
+    private void checkout() {
+        KeranjangSewa keranjang = penyewaAktif.getKeranjang();
+        try {
+            if (keranjang.isEmpty()) {
+                throw new InputTidakValidException("Keranjang masih kosong.");
+            }
+            ArrayList<ItemKeranjang> items = keranjang.getDaftarItem();
+            for (ItemKeranjang item : items) {
+                daftarBarang.cekTersedia(item.getBarang().getId());
+            }
+
+            Pembayaran metode;
+            int pilih = comboPembayaran.getSelectedIndex();
+            if (pilih == 0) {
+                metode = new TransferBank();
+            } else if (pilih == 1) {
+                metode = new QRIS();
+            } else {
+                metode = new Tunai();
+            }
+
+            metode.prosesPembayaran(keranjang.hitungTotalBiaya());
+            for (ItemKeranjang item : items) {
+                item.getBarang().setTersedia(false);
+            }
+            Transaksi trx = new Transaksi(penyewaAktif, items, metode);
+            penyewaAktif.tambahRiwayat(trx);
+            semuaTransaksi.add(trx);
+            keranjang.kosongkanKeranjang();
+            perbaruiTabel();
+            tampilDialogInvoice(trx);
+        } catch (InputTidakValidException | BarangTidakTersediaException ex) {
+            tampilError(ex.getMessage());
+        }
+    }
+
+    private void pengembalian() {
+        int baris = tabelRiwayat.getSelectedRow();
+        if (baris < 0) {
+            tampilError("Pilih transaksi di tabel riwayat dulu.");
+            return;
+        }
+        Transaksi trx = penyewaAktif.getRiwayat().get(baris);
+        if (trx.isSelesai()) {
+            tampilError("Transaksi " + trx.getId() + " sudah selesai.");
+            return;
+        }
+
+        JComboBox<String> comboMode = new JComboBox<>(new String[]{"Hari Ini", "Tanggal Manual (yyyy-MM-dd)", "Simulasi Telat N Hari"});
+        JTextField tfNilai = new JTextField(LocalDate.now().format(FORMAT_INPUT));
+        tfNilai.setEnabled(false);
+        comboMode.addActionListener(e -> {
+            int mode = comboMode.getSelectedIndex();
+            tfNilai.setEnabled(mode != 0);
+            tfNilai.setText(mode == 2 ? "0" : LocalDate.now().format(FORMAT_INPUT));
+        });
+        if (!tampilForm("Pengembalian " + trx.getId(), new String[]{"Mode Tanggal", "Tanggal / Hari Telat"}, comboMode, tfNilai)) {
+            return;
+        }
+
+        try {
+            LocalDate tglKembali;
+            int mode = comboMode.getSelectedIndex();
+            if (mode == 0) {
+                tglKembali = LocalDate.now();
+            } else if (mode == 1) {
+                try {
+                    tglKembali = LocalDate.parse(wajibIsi(tfNilai.getText(), "Tanggal"), FORMAT_INPUT);
+                } catch (DateTimeParseException ex) {
+                    throw new InputTidakValidException("Format tanggal harus yyyy-MM-dd.", ex);
+                }
+            } else {
+                int telat = (int) parseAngka(tfNilai.getText(), 0, "Hari terlambat");
+                if (telat > 365) {
+                    throw new InputTidakValidException("Maksimal simulasi 365 hari.");
+                }
+                tglKembali = trx.getTanggalJatuhTempo().plusDays(telat);
+            }
+            trx.prosesPengembalian(tglKembali);
+            perbaruiTabel();
+            tampilDialogInvoice(trx);
+        } catch (InputTidakValidException ex) {
+            tampilError(ex.getMessage());
+        }
+    }
+
+    private void perbaruiTabel() {
+        modelKatalog.setRowCount(0);
+        for (Barang b : daftarBarang.getDaftarBarang()) {
+            String ekstra = "-";
+            if (b instanceof AlatRaket) {
+                ekstra = Pembayaran.formatRupiah(((AlatRaket) b).getBiayaPerawatanSenar()) + "/sewa";
+            } else if (b instanceof AlatKardio) {
+                ekstra = Pembayaran.formatRupiah(((AlatKardio) b).getBiayaAsuransiHarian()) + "/hari";
+            }
+            modelKatalog.addRow(new Object[]{b.getId(), b.getNama(), b.getKategori(),
+                Pembayaran.formatRupiah(b.getTarifHarian()), ekstra, b.isTersedia() ? "Tersedia" : "Sedang Disewa"});
+        }
+
+        isiTabelTransaksi((DefaultTableModel) tabelTransaksiAdmin.getModel(), semuaTransaksi, true);
+        if (penyewaAktif != null) {
+            DefaultTableModel mKeranjang = (DefaultTableModel) tabelKeranjang.getModel();
+            mKeranjang.setRowCount(0);
+            ArrayList<ItemKeranjang> items = penyewaAktif.getKeranjang().getDaftarItem();
+            for (ItemKeranjang x : items) {
+                mKeranjang.addRow(new Object[]{x.getBarang().getId(), x.getBarang().getNama(),
+                    x.getDurasiHari() + " hari", Pembayaran.formatRupiah(x.hitungSubtotal())});
+            }
+            labelTotal.setText("Total: " + Pembayaran.formatRupiah(penyewaAktif.getKeranjang().hitungTotalBiaya()));
+            tabsPenyewa.setTitleAt(1, "Keranjang (" + items.size() + ")");
+            isiTabelTransaksi((DefaultTableModel) tabelRiwayat.getModel(), penyewaAktif.getRiwayat(), false);
+        }
+    }
+
+    private void isiTabelTransaksi(DefaultTableModel model, ArrayList<Transaksi> sumber, boolean denganPenyewa) {
+        model.setRowCount(0);
+        for (Transaksi t : sumber) {
+            String kembali = t.getTanggalKembali() == null ? "-" : t.getTanggalKembali().format(FORMAT_TAMPIL);
+            String total = Pembayaran.formatRupiah(t.getTotalBiayaAwal());
+            String denda = Pembayaran.formatRupiah(t.getTotalDenda());
+            if (denganPenyewa) {
+                model.addRow(new Object[]{t.getId(), t.getPenyewa().getUsername(), t.getTanggalSewa().format(FORMAT_TAMPIL),
+                    t.getTanggalJatuhTempo().format(FORMAT_TAMPIL), kembali, t.getStatus(), total, denda});
+            } else {
+                model.addRow(new Object[]{t.getId(), t.getTanggalSewa().format(FORMAT_TAMPIL),
+                    t.getTanggalJatuhTempo().format(FORMAT_TAMPIL), kembali, t.getStatus(), total, denda});
+            }
+        }
+    }
+
+   
