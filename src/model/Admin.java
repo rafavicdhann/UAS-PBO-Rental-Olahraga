@@ -42,6 +42,7 @@ public class Admin extends Akun {
         System.out.println("Transaksi " + transaksi.getId() + " berhasil disetujui.");
     }
 
+    
     /**
      * Mengonfirmasi pengembalian barang dan mengembalikan status ketersediaan barang.
      *
